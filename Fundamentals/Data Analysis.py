@@ -1,10 +1,16 @@
 import numpy as np
 import pickle
 
+#Performs various tests to analyze the fundamental data acquired from the webscraper. Plans to integrate a rating system and feed stocks that pass a certain rating into the technical analysis program.
+
+#Loads fundamental data that was acquired from the webscraper into dictionaries
 def load_data(ticker):
+    
+    #Function to load pickled files
     def load_obj(ticker,datatype):
         with open("{}_{}_Data".format(ticker,datatype) + '.pkl', 'rb') as f:
             return pickle.load(f)
+        
     [growth_rates, sum_quarterly_growth] = load_obj(ticker,"Revenue")
     [eps_data,growth_rate,share_data,cash_flow_data,change] = load_obj(ticker,"EPS")
     [annual_net_income,annual_roe,annual_equity,Industry_Name,avg_industry_roe] = load_obj(ticker,"ROE")
@@ -14,6 +20,7 @@ def load_data(ticker):
 [growth_rates,sum_quarterly_growth,eps_data,eps_growth,share_data,cash_flow_data,eps_quality,annual_net_income,annual_roe,annual_equity,Industry_Name,industry_roe] = load_data("TSLA")
 
 
+#Analysis of revenue growth
 def REV_analysis(growth_rates,sum_quarterly_growth):
     index = list(growth_rates.keys())
     growth = []
@@ -48,8 +55,10 @@ def REV_analysis(growth_rates,sum_quarterly_growth):
     else:
         print ("Positve Revenue Growth of {}% from 2015 to 2017".format((sum(sum_growth_15_17[:4]))/4))
         return True
+    #Returns True if revenue has grown from 2015 to 2017, False if not.
 
-
+    
+#Analyzes earnings per share, earnigns per share growth and the quality of the earnings per share datas accuracy with basic shares outstanding
 def EPS_analysis(eps_quality,eps_growth):
     quarters = ["Quart 1", "Quart 2", "Quart 3", "Quart 4"]
     quarters_growth = ["Quart 1 Growth","Quart 2 Growth","Quart 3 Growth","Quart 4 Growth"]
@@ -83,6 +92,7 @@ def EPS_analysis(eps_quality,eps_growth):
         return False
 
 
+#Analyzes return on equity by comparing it to its industry average return on equity
 def ROE_analysis(industry_roe,roe):#last three years
     index = list(roe.keys())
     difference = []
@@ -94,13 +104,6 @@ def ROE_analysis(industry_roe,roe):#last three years
     else:
         print ("Average Return on Equity is {}% Greater than its Industry Return from 2015 to 2017".format(sum(difference)/len(index)))
         return True
-
-
-#annual_roe = {2017: 36.86750846372038, 2016: 36.90328104554046, 2015: 46.24819187360872}
-#industry_roe = {2018: 37.8625, 2017: 37.8625, 2016: 37.8625, 2015: 37.8625, 2014: 37.8625, 2013: 37.8625}
-#eps_quality = {'Quart 1': 5.891599401378739, 'Quart 2': 1.613671824881476, 'Quart 3': 10.270493161379026, 'Quart 4': 7.548329056859458}
-#eps_growth = {'Quart 1 Growth': 11.214953271028026, 'Quart 2 Growth': -26.206896551724128, 'Quart 3 Growth': -27.1356783919598, 'Quart 4 Growth': 59.199999999999996}
-
 
 print (REV_analysis(growth_rates,sum_quarterly_growth))
 print (EPS_analysis(eps_quality,eps_growth))
