@@ -8,14 +8,20 @@ from datetime import time
 from datetime import datetime
 from datetime import timedelta
 
+#A program written to scrape fundamental stock data from the website csimarket.com. This data is to be analyzed in another program
+#and then ranked based on criteria outlined in the Nasdaq Dozen.
+#Nasdaq Dozen: https://www.nasdaq.com/investing/dozen/
+
 now = datetime(2018,1,2)
-year = timedelta(days = 365)
+year = timedelta(days = 365)#set date
 month = timedelta(days = 30)
 
-# gets raw revenue data######################
+#Scrapes and formats raw revenue data
 def revenue(ticker):
     quarters = ["Yearly Average"]
     def revenue_data(ticker):
+        
+        #webscraper
         revenue = []
         revenue_label = []
         revenue_float = []
@@ -27,7 +33,6 @@ def revenue(ticker):
 
         for k in range(6):
             revenue = []
-
             tr = (td[k].findAll("td"))
             tab = [(t.findAll("span")) for t in tr if t!=None]
 
@@ -44,13 +49,12 @@ def revenue(ticker):
 
             if k < 4:
                 ([revenue_label.append((td[k].findAll("strong")[i]).text) for i in range(2)])
-
-
         for b in range(8):
             for j in range(13):
                 if ((((now + month*j).date()).strftime("%B, %Y"))[:-6]) == revenue_label[b]:
                     revenue_label[b] = ((now + month*j).date())
 
+        #Formats
         for k in range(1,9,2):
             quarters.append(revenue_label[k-1] + ": {}".format((revenue_label[k].strftime("%B, %Y"))[:-6]))
 
@@ -58,9 +62,10 @@ def revenue(ticker):
             revenue_float = revenue_float[0:20]
 
 
-        return revenue_float###scrapes and formats revenue
+        return revenue_float
     revenue = revenue_data(ticker)
 
+    #Calculates growth rates from revenue data
     def analyze_revenue(revenue):
         Quarter_1 = revenue[0:4]
         Quarter_2 = revenue[4:8]
@@ -82,20 +87,19 @@ def revenue(ticker):
                     temp = (((Quarter[k - 1] - Quarter[k]) / Quarter[k]) * 100)
                     growth_rates.append(temp)
 
-            return (growth_rates)###calculates growth rates from revenue data
+            return (growth_rates)
 
-        growth_rates = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}#defines growth rate and sum dictionaries
+        #Defines growth rate and sum dictionaries
+        growth_rates = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}
         sum_quarterly_growth = {"Yearly Average":0,"Quarter 4":1,"Quarter 3":2,"Quarter 2":3,"Quarter 1":4}
 
+        #Calculates growth rate
         for k in range(5):
             temp = Array[k]
             growth_rates[k] = calculate_growth_rate(temp)
-    #calculates growth rate
-
         for k in range(4):
             growth_rates[quarters[k+1]] = growth_rates.pop(k)
         growth_rates[quarters[0]] = growth_rates.pop(4)
-
 
         for quarter in quarters:
             sum_quarterly_growth[quarter] = (sum(growth_rates[quarter]))/len(growth_rates[quarter])#creates quarterly growth from sum of growth rates
@@ -113,6 +117,7 @@ def revenue(ticker):
 
     [growth_rates,sum_quarterly_growth] = analyze_revenue(revenue)
 
+    #Print data to console
     print ("Quarterly Revenue Growth Rates")
     print (growth_rates)
     print ("Average Growth Rate by Quarter(last three years)")
@@ -121,14 +126,16 @@ def revenue(ticker):
     return growth_rates,sum_quarterly_growth,revenue
 
 
-#gets raw eps data###################
+#Scrapes and formats raw eps data and basic shares outstanding, calculates growth rate for eps
 def eps(ticker):
     def eps_data(ticker):
-        years = [""]#,4,8,12,14,18]#2018,2017,2016,2015,2014,2013,
+        years = [""]#4,8,12,14,18#2018,2017,2016,2015,2014,2013,
         eps_array = np.empty((6,5), float)
         growth_rate_array = np.empty((6,4),float)
         share_data_array = np.empty((6,5), float)
         count = 0
+        
+        #Webscraper
         for year in years:
             raweps = requests.get(("https://csimarket.com/stocks/income.php?code={}&hist={}").format(ticker,year))
             epssoup = bs4.BeautifulSoup(raweps.text, "html.parser")
@@ -137,12 +144,13 @@ def eps(ticker):
             rawprodseps = (tr[2].findAll("span"))
             rawprodshares = (tr[3].findAll("span"))
 
+            #Formatting
             eps_data = {4:"",3:"",2:"",1:"",0:""}
             share_data = {5: "", 4: "", 3: "", 2: "", 1: ""}
             for k in range(5):
                 eps_data[k] = (float(((rawprodseps[k]).text).replace(",","")))
 
-
+            #Calculates growth rates from eps data
             def calculate_growth_rate(Quarter):
                 growth_raters = []
                 counter = 0
@@ -163,11 +171,11 @@ def eps(ticker):
                     growth_rates[yee] = growth_raters[counter]
                     counter += 1
 
-                return (growth_rates)  ###calculates growth rates from revenue data
+                return (growth_rates)  
 
             growth_rate = calculate_growth_rate(eps_data)
 
-
+            #Defines four quarters, Q1 prime is the first quarter of the next year
             quarters = ["Quart 1", "Quart 2", "Quart 3", "Quart 4","Quart 1 prime"]
             growth_rate_quarters = {"Quart 1 Growth", "Quart 2 Growth", "Quart 3 Growth", "Quart 4 Growth"}
 
@@ -184,6 +192,7 @@ def eps(ticker):
                 counter += 1
                 share_data[quarter] = share_data.pop(counter)
 
+            #Places data into arrays
             eps_array[count] = [eps_data[quarter] for quarter in quarters]
             growth_rate_array[count] = [growth_rate[quarter] for quarter in growth_rate_quarters]
             share_data_array[count] = [share_data[quarter] for quarter in quarters]
@@ -191,12 +200,12 @@ def eps(ticker):
 
         return eps_data,share_data,growth_rate,eps_array,growth_rate_array,share_data_array
 
-
-
+    #Scrapes and formats cash flow data
     def cash_flow_data(ticker):
         years = [""]#,4,8,12,14,18]#2018,2017,2016,2015,2014,2013,
         cash_flow_array = np.empty((6,5), float)
         count = 0
+        #webscraper
         for year in years:
             raweps = requests.get(("https://csimarket.com/stocks/cashflow.php?code={}&hist={}").format(ticker,year))
             cashsoup = bs4.BeautifulSoup(raweps.text, "html.parser")
@@ -216,11 +225,13 @@ def eps(ticker):
                 cash_flow_data[quarter] = cash_flow_data.pop(counter)
                 counter += 1
 
+            
             cash_flow_array[count] = [cash_flow_data[quarter] for quarter in quarters]
             count +=1
 
-        return (cash_flow_data,cash_flow_array)
+        return cash_flow_data,cash_flow_array
 
+    #Creates a way of representing eps quality by using operational cash flow and data on outstanding shares
     def eps_cash_flow_analysis(cash_flow_data,eps_data,share_data):
         quarters = ["Quart 1", "Quart 2", "Quart 3", "Quart 4"]
         change = {"Quart 1": "", "Quart 2": "","Quart 3": "", "Quart 4": ""}
@@ -232,6 +243,7 @@ def eps(ticker):
 
         return change
 
+    #Calls above programs with a specified ticker
     [eps_data,share_data,growth_rate,eps_array,growth_rate_array,share_data_array] = eps_data(ticker)
     [cash_flow_data,cash_flow_array] = cash_flow_data(ticker)
 
@@ -246,6 +258,7 @@ def eps(ticker):
             brange = (eps_cash_flow_analysis(cash_flow_array[k],eps_array[k],share_data_array[k]))
             cps_array[k] = [brange[quarter] for quarter in quarters]
 
+    #Prints data to console
     print ("Basic Net EPS")
     print (eps_data)
     print ("EPS Growth Rate")
@@ -264,9 +277,10 @@ def eps(ticker):
     return change,cash_flow_data,eps_data,share_data,growth_rate,eps_array,growth_rate_array,share_data_array,cps_array#######
 
 
-#gets raw equity data ####################
+#Scrapes raw net income and equity data
 def equity(ticker):
     def income_equity_data(ticker):
+        #Webscraper
         rawincome = requests.get(("https://csimarket.com/stocks/single_growth_rates.php?code={}&net").format(ticker))
         incomesoup = bs4.BeautifulSoup(rawincome.text, "html.parser")
         table = (incomesoup.findAll('table', {'class': 'osnovna_tablica_bez_gifa'}))
@@ -283,6 +297,7 @@ def equity(ticker):
         years = {0:"",1:4,2:8,3:12,4:16}  # 2018,2017,2016,2015
         equity_array = np.empty((5,4),float)
         for k in range(5):
+            #Webscraper
             rawequity = requests.get(("https://csimarket.com/stocks/balance.php?code={}&hist={}").format(ticker,years[k]))
             equitysoup = bs4.BeautifulSoup(rawequity.text, "html.parser")
             rawannualequity = requests.get(("https://csimarket.com/stocks/balance.php?code={}&annual").format(ticker))
@@ -297,10 +312,12 @@ def equity(ticker):
             equity_array[k] = jeezy
 
         return (income_array,equity_array,annual_equity)# x = year, y = quarter --- x = quarter, y = year
-
+    
+    #Calls above function on specified ticker
     [income_array,equity_array,annual_equity] = (income_equity_data(ticker))
 
-    def calculate_roe(income_array,equity_array,annual_equity):#most recent year may not be accurate do to net income not being reported
+    #Calculates the return on equity using the data acquired above
+    def calculate_roe(income_array,equity_array,annual_equity):#most recent year may not be accurate due to net income not being reported
         annual_roe = {2017:0,2016:1,2015:2}
         annual_net_income = income_array[4][1:]
         years = [2017,2016,2015]
@@ -314,6 +331,7 @@ def equity(ticker):
 
     [annual_net_income,annual_roe] = calculate_roe(income_array, equity_array, annual_equity)
 
+    #Prints data to console
     print ("Annual Net Income")
     print (annual_net_income)
     print ("Annual Return on Equity")
@@ -321,8 +339,12 @@ def equity(ticker):
     print ("Annual Equity")
     print (annual_equity)
 
+    #Given a stock ticker, scrapes return on equity data of the stocks industry from csimarket.com
     def get_industry_roe(ticker):
+        
+        #Returns the name of a stocks industry given a ticker
         def get_ticker_industry(ticker):
+            #Webscraper
             rawindcode = requests.get(("https://csimarket.com/stocks/at_glance.php?code={}").format(ticker))
             rawcodesoup = bs4.BeautifulSoup(rawindcode.text, "html.parser")
             table = (rawcodesoup.find('table', {'class': 'Industry_tablica'}))
@@ -337,17 +359,20 @@ def equity(ticker):
 
         Industry_Name = ((str(get_ticker_industry(ticker)))[:-4])
 
+        #Function for opening pickled files
         def load_obj(name):
             with open(name + '.pkl', 'rb') as f:
                 return pickle.load(f)
 
+        #Each industry has a code number linked to it, another function was used to find the numbers and pickle them into a dictionary
         Industry_Name_Key = load_obj("Industry_Name_Key")
 
-        key = Industry_Name_Key[Industry_Name]#Construction Raw Materials Industry
+        key = Industry_Name_Key[Industry_Name]
         industry_roe_array = np.empty((6, 4), float)
         years = ["", 4, 8, 12, 14, 18]  # 2018,2017,2016,2015,2014,2013,
         count = 0
 
+        #Webscraper
         for year in years:
             rawindustryroe = requests.get(("https://csimarket.com/Industry/industry_ManagementEffectiveness.php?ind={}&hist={}").format(key,year))
             industryroesoup = bs4.BeautifulSoup(rawindustryroe.text, "html.parser")
@@ -363,6 +388,8 @@ def equity(ticker):
                     industry_roe.append(float(((((tr[6]).findAll("span"))[k]).text).replace(",","").replace("-","").replace("%","")))
             industry_roe_array[count] = industry_roe[1:]
             count += 1
+            
+        #given equity which was acquired above, roe is calculated and put into an array
         def calc_ind_avg_roe(industry_roe_array):
             avg_industry_list = []
             avg_industry_roe = {2018:"",2017:"",2016:"",2015:"",2014:"",2013:""}
@@ -389,19 +416,20 @@ def equity(ticker):
         print ("Average Return on Equity for the {}".format(Industry_Name))
         print (avg_industry_roe)
 
-        return (industry_roe_array,avg_industry_roe,Industry_Name)###########
+        return (industry_roe_array,avg_industry_roe,Industry_Name)
 
     [industry_roe_array,avg_industry_roe,Industry_Name] = get_industry_roe(ticker)
 
+    #Pickles all the acquired data so it can be used in other functions
     pickle_out = open("{}_ROE_Data.pkl".format(ticker), 'wb')
     pickle.dump((annual_net_income,annual_roe,annual_equity,Industry_Name,avg_industry_roe), pickle_out, pickle.HIGHEST_PROTOCOL)
     pickle_out.close()
 
-    return annual_net_income,annual_roe,annual_equity,Industry_Name,avg_industry_roe#######
+    return annual_net_income,annual_roe,annual_equity,Industry_Name,avg_industry_roe
 
 
 
-tickers = ["AAPL"]
+tickers = ["AAPL"]#Note: website seems to only have nyse tickers at the moment
 for ticker in tickers:
     print ("-------",ticker,"-------")
     (revenue(ticker))
