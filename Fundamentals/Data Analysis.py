@@ -33,8 +33,6 @@ def REV_analysis(growth_rates,sum_quarterly_growth):
 
     for k in range(5):
         sum_growth_15_17.append(sum((growth[k])[-2:]))
-
-
     if sum_growth_15_17[4] > 0 and np.std(sum_growth_15_17[:4]) < 8:
         print ("Negative Revenue Growth of {}% from 2015 to 2017".format((sum(sum_growth_15_17[:4]))/4))
         return False
@@ -48,7 +46,6 @@ def REV_analysis(growth_rates,sum_quarterly_growth):
             growth_score.append(2)
         else:
             growth_score.append(3)
-
     if sum(growth_score) < 8:
         print ("Negative Revenue Growth of {}% from 2015 to 2017".format((sum(sum_growth_15_17[:4]))/4))
         return False
@@ -81,12 +78,9 @@ def EPS_analysis(eps_quality,eps_growth):
 
     if sum(quality) < 11:
         print ("Warning: EPS of Poor Quality")
-
-
     if sum(growth)/len(growth) > 0:
         print ("Positive Average EPS Growth of {}%".format(sum(growth)/len(growth)))
         return True
-
     else:
         print ("Negative Average EPS Growth of {}%".format(sum(growth)/len(growth)))
         return False
