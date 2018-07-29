@@ -32,7 +32,6 @@ def get_industry_roe(ticker):
     #Each industry has a code number linked to it, another function was used to find the numbers and pickle them into a dictionary
     Industry_Name_Key = load_obj("Industry_Name_Key")
     
-    
     key = Industry_Name_Key[Industry_Name]#Construction Raw Materials Industry
     industry_roe_array = np.empty((6, 4), float)
     years = ["", 4, 8, 12, 14, 18]  # 2018,2017,2016,2015,2014,2013,
@@ -45,7 +44,6 @@ def get_industry_roe(ticker):
         table = (industryroesoup.findAll('table', {'class': 'osnovna_tablica_bez_gifa'}))
         industry_name = industryroesoup.find("div",{"class","compnamec"})
         tr = (table[0].findAll("tr"))
-
         
         industry_roe = []
         for k in range(5):
