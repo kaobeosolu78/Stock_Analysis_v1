@@ -7,9 +7,14 @@ import os.path
 import matplotlib.pyplot as plt
 import matplotlib.dates
 
+#Due to inaccuracies in the csimarket source and a lack of solid sources for stock fundamental data, I wrote this program
+#which uses the much more accurate sec.gov website to source data on any fundamental item listed on their 10k sheets. The 
+#program takes in a ticker, and then prompts the user for what fundamental item or items they would like and what page 
+#that fundamental is listed on. It will then iterate through the years and scrape the data from sec edgar, returning
+#it all as a pickled dictionary.
 
 
-
+#Function for loading pickled object
 def load_obj(name):
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
@@ -17,6 +22,7 @@ def load_obj(name):
 def get_data(tickers):
     bemp = 0
 
+    #Looks to see if a file already exists for each given ticker
     for ticker in tickers:
         if os.path.isfile("{}.pkl".format(ticker)) == True:
             temp = load_obj(ticker)
@@ -24,11 +30,14 @@ def get_data(tickers):
             print (temp)
             continue
 
+    #The sec edgar website uses a code called a cik to index each stock. This function retrieves the cik and filenames for each 
+    #ticker given to it.
     def Get_10k(tickers):
         filecodes = {}
         CIK = {}
         badticks = []
 
+        #Webscraper
         for ticker in tickers:
             rawcik = requests.get(("https://www.sec.gov/cgi-bin/browse-edgar?CIK={}&owner=exclude&action=getcompany").format(ticker))
             ciksoup = bs4.BeautifulSoup(rawcik.text, "html.parser")
@@ -49,6 +58,7 @@ def get_data(tickers):
             tr = (((ksoup.find(class_="tableFile2"))).findAll("tr"))
             td = (((ksoup.find(class_="tableFile2"))).findAll("td"))
 
+            #organize filecodes by year and formatting
             for k in range(len(tr)):
                 if ((tr[k]).find(class_="small")) != None:
                     temp = ((((tr[k]).find(class_="small")).text)[62:82])
@@ -75,10 +85,9 @@ def get_data(tickers):
         return CIK,filecodes
 
 
-    [CIK,filecodes] = (Get_10k(tickers))###################################################
+    [CIK,filecodes] = (Get_10k(tickers))
 
     wop = {}
-
     for ticker in tickers:
         print (ticker)
         products = {}
@@ -87,6 +96,9 @@ def get_data(tickers):
         bount = 0
         one_sheet = ["", ""]
 
+        #Each date is set up as a set of files written in html containg the different fundamentals, so i iterate by 
+        #ticker, date and finally page. I use regex to extract the user selected data and organize it into a dictionary
+        #of arrays.
         for ind in index:
             no = 0
             numba = 0
@@ -107,6 +119,7 @@ def get_data(tickers):
                     old = 0
                     print (numba)
                 except:
+                    #The formatting changes for each page after 2002, so this code is to handle that change.
                     rawincome = requests.get(
                         ("https://www.sec.gov/Archives/edgar/data/{}/{}/d10k.htm").format(CIK[ticker], tickcodes[ind]))
                     incomesoup = bs4.BeautifulSoup(rawincome.text, "html.parser")
@@ -128,6 +141,7 @@ def get_data(tickers):
                         if grale[-1] == "t":
                             break
 
+                        #webscraper^
                         rawincome = requests.get(
                             ("https://www.sec.gov/Archives/edgar/data/{}/{}/{}").format(CIK[ticker],
                                                                                               tickcodes[ind], grale))
@@ -146,6 +160,7 @@ def get_data(tickers):
                         if len(tr[k].findAll("td")) > 0:
                             requet.append(((((tr[k]).findAll("td"))[0]).text))
 
+                    #Saves name of sheet and prints items to console
                     print (requet)
                     sheet = str((((tr[0]).findAll("strong"))[0]).text).replace("CONSOLIDATED ","")
 
@@ -155,6 +170,11 @@ def get_data(tickers):
                             b = k
                     sheet = sheet[:b-1]
 
+                    
+                    #The way the sec has formatted 10ks, each company is allowed to name each item whatever they want making
+                    #it very difficult to globaly index items. To circumvent this I unfortunately must prompt the user each
+                    #time they want to index a different ticker. I have plans to incorporate machine learning and to train a
+                    #model for unifying index format. 
                     bata = (input("What data would you like from {}'s {}".format(ticker,(((tr[0]).findAll("strong"))[0]).text))).split(",")
                     bount += 1
 
@@ -169,10 +189,10 @@ def get_data(tickers):
                         for dat in bata:
                             products[dat] = []
                         if len(list(products.keys())) > 0:
-                            pass#.append(numba)
+                            pass
                         continue
                     elif len(list(products.keys())) == 0 and bount == 1:
-                        one_sheet = [True,numba]##########################
+                        one_sheet = [True,numba]
 
                     for dat in bata:
                         products[dat] = []
@@ -180,6 +200,7 @@ def get_data(tickers):
                 for dat in list(products.keys()):
                     prods = []
 
+                    #Identifies what units the item is in and multiplies to adjust accordingly.
                     for k in range(len(tr)):
                         rawprods = []
                         if tr[0].find(text=re.compile("thousand",re.IGNORECASE)) != None:
@@ -188,10 +209,9 @@ def get_data(tickers):
                             factor = 1000000
                         else:
                             factor = 1
-                        #print ((tr[k]).text)#.find(text=re.compile("^"+str(dat.replace("'","")+"$"), re.IGNORECASE))))
-                        #print (dat)
+                        
+                        #Regex
                         if (tr[k].find(text=re.compile("^"+str(dat.replace("'","")+"$"), re.IGNORECASE))) != None:
-                            #print ("yeet")
                             [rawprods.append(((((tr[k]).findAll("td"))[i]).text).replace("\n", "").replace("\xa0", "").replace("$","").replace("Â", "")) for i in range(len(((tr[k]).findAll("td"))))]
                             rawprods = list(filter(None,rawprods))
                             if len(rawprods) > 10:
@@ -203,6 +223,7 @@ def get_data(tickers):
                             prods = (float((re.sub(r"[^.0-9]","",rawprods[1]))))
                             counter += 1
 
+                    #Handles null data error
                     if counter == 0:
                         if no == 0:
                             numba = 0
@@ -216,7 +237,6 @@ def get_data(tickers):
                         no += 1
                         continue
 
-
                     if prods != [] and old != 1:
                         try:
                             products[dat].append([prods,((((tr[1]).findAll("div"))[1]).text)])
@@ -226,6 +246,7 @@ def get_data(tickers):
                         products[dat].append([prods,'Sep. 29, ' + ind])
 
 
+        #Pickles data
         pickle_out = open("{}.pkl".format(ticker), 'wb')
         pickle.dump((products), pickle_out, pickle.HIGHEST_PROTOCOL)
         pickle_out.close()
@@ -234,10 +255,11 @@ def get_data(tickers):
 
     return (wop)
 
-
-tickers = ["goog"]#["acn","aes","amg","a","gas","apd","agn","alle","all","altr","aee","axp","aig","amp","abc","aph","apc","aiv"]#['ABT', 'ABBV', 'ACN', 'ACE', 'ADBE', 'AAP', 'AES', 'AET', 'AFL', 'AMG', 'A', 'GAS', 'APD', 'ARG', 'AKAM', 'AA', 'AGN', 'ALXN', 'ALLE', 'ADS', 'ALL', 'ALTR', 'MO', 'AMZN', 'AEE', 'AAL', 'AEP', 'AXP', 'AIG', 'AMT', 'AMP', 'ABC', 'AME', 'AMGN', 'APH', 'APC', 'ADI', 'AON', 'APA', 'AIV', 'AMAT']#chk wix pbr ewz
+tickers = ["goog"]#Input:list of tickers
 print (get_data(tickers))
 
+#A function to perform a preliminary analysis of the data that was collected above. This analysis includes
+#calculating growth rate and construction of a ratio to determine whether the stock has greater liabilities or assets
 def process_data(ticker):
     products = {}
     raw = []
@@ -271,6 +293,7 @@ def process_data(ticker):
 
     return products,dates
 
+#Interprets the ratio and plots the results
 def debt_identifier(ticker):
     quick_ratio = []
     [products,dates] = process_data(ticker)
@@ -288,6 +311,7 @@ def debt_identifier(ticker):
 
 #print (debt_identifier("aapl"))
 
+#Constructs another ratio and graphs it
 def process_eps_data(ticker):
     quick_components = {"one":"Inventory","two":"Total assets","three":"Total liabilities"}
     [products,dates] = process_data(ticker)
@@ -316,13 +340,6 @@ def process_eps_data(ticker):
 
         [growth_rates,avg] = calculate_growth_rate(array)
 
-        #PERat = []
-        #for k in range(len(array[0])):
-        #
-        #    df = web.DataReader("TSLA", 'morningstar', (array[1])[k])
-        #    temp = ((df["Close"])[0])
-        #    PERat.append(temp/((array[0])[k]))
-        #print (PERat)
         (plt.plot_date(list(growth_rates.keys()),list(growth_rates.values())))
         plt.suptitle('Growth in {}\'s {}'.format(quick_components[key],ticker))
         plt.xlabel('Dates')
